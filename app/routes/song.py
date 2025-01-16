@@ -27,7 +27,7 @@ valid_access_token = os.getenv("ACCESS_TOKEN", "123")
 async def create_song_task(
         schema: SongTaskCreateSchema,
         request: Request,
-        access_token: Header(...),
+        access_token: str = Header(),
         service: SongService = Depends()
 ) -> Response:
     if access_token != valid_access_token:
@@ -48,7 +48,7 @@ async def create_song_task(
 async def get_song_task(
         song_id: UUID,
         request: Request,
-        access_token: Header(...),
+        access_token: str = Header(),
         service: SongService = Depends()
 ):
     if access_token != valid_access_token:
