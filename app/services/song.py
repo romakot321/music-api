@@ -20,24 +20,22 @@ class SongService:
 
     async def create(self, schema: SongTaskCreateSchema) -> SongTaskSchema:
         request = AITaskCreateRequestSchema(
-            is_auto=int(not schema.with_voice),
             prompt=schema.prompt,
-            instrumental=int(schema.with_voice)
+            lyrics=(schema.prompt if schema.with_voice else "[Instrumental]"),
+            instrumental=int(not schema.with_voice)
         )
 
         logger.debug("Sending submit request to AI: " + str(request.model_dump()))
-        response = await self.ai_repository.submit(request)
-        if response is None:
-            raise HTTPException(500)
+        response = await self.ai_repository.generate(request)
         logger.debug("Receive response: " + str(response.model_dump()))
-        if not response.data:
+        if not response.data or not response.data[0].music:
             raise HTTPException(400)
-        task = response.data[0]
+        song = response.data[0]
 
         schema = SongTaskSchema(
-            id=task.song_id,
-            is_finished=task.status == AITaskStatus.finished,
-            audio_url=(task.audio if task.status == AITaskStatus.finished else None)
+            id=song.uuid,
+            is_finished=0,
+            audio_url=self.ai_repository.make_audio_url(song)
         )
         await self.song_repository.store(schema)
         return schema
@@ -53,9 +51,9 @@ class SongService:
         task = response.data[0]
 
         schema = SongTaskSchema(
-            id=song_id,
+            id=str(song_id),
             is_finished=task.status == AITaskStatus.finished,
-            audio_url=(task.audio if task.status == AITaskStatus.finished else None)
+            audio_url=(cached.audio_url if cached is not None else "")
         )
         await self.song_repository.store(schema)
         return schema

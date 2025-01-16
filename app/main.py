@@ -7,6 +7,9 @@ from pydantic_settings import BaseSettings
 from loguru import logger
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from contextlib import asynccontextmanager
+
+from app.repositories.ai import AIRepository
 
 
 class ProjectSettings(BaseSettings):
@@ -37,12 +40,19 @@ def register_cors(application):
     )
 
 
+@asynccontextmanager
+async def lifespan(app):
+    await AIRepository.login()
+    yield
+
+
 def init_web_application():
     project_settings = ProjectSettings()
     application = FastAPI(
         openapi_url='/openapi.json',
         docs_url='/docs',
-        redoc_url='/redoc'
+        redoc_url='/redoc',
+        lifespan=lifespan
     )
 
     if project_settings.LOCAL_MODE:

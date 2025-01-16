@@ -22,31 +22,53 @@ class AILyricsResponseSchema(AIResponseSchema):
 
 
 class AITaskCreateRequestSchema(BaseModel):
-    is_auto: int = Field(ge=0, le=1)  # when 1, instrumental ignored
     prompt: str
-    model_version: str = 'v3.5'
+    lyrics: str
     instrumental: int = Field(ge=0, le=1)  # 1 for pure music
 
+    is_auto: int = 0
+    mv: str = 'v4.0'
+    g_num: int = 2
+    is_public: int = 0
+    gender: str = "random"
 
-class AITaskStatus(str, Enum):
-    running = "RUNNING"
-    finished = "FINISHED"
+
+class AITaskStatus(int, Enum):
+    running = 2
+    finished = 0
 
 
 class AISongSchema(BaseModel):
-    audio: HttpUrl
-    audio_duration: int
-    image: HttpUrl
-    lyric: str
-    song_id: UUID
-    status: AITaskStatus = AITaskStatus.running
-    tags: str  # Separeted by ,
-    title: str
+    class Music(BaseModel):
+        audio_duration: int | str
+        audio_file: str
+        image_file: str
+        item_uuid: str
+        lyric: str
+        tags: str
+        title: str
+
+    id: int
+    is_public: int
+    music: list[Music]
+    part: int
+    uuid: str
 
 
 class AITaskCreateResponseSchema(AIResponseSchema):
     data: list[AISongSchema]
 
 
+class AITaskStatusData(BaseModel):
+    class Info(BaseModel):
+        audio_duration: int | str
+        audio_file: str
+        image_file: str
+
+    info: list[Info]
+    status: AITaskStatus  # 0 for finished, 2 for in progress
+    uuid: str
+
+
 class AITaskStatusResponseSchema(AIResponseSchema):
-    data: list[AISongSchema]
+    data: list[AITaskStatusData]

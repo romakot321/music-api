@@ -1,36 +1,134 @@
 import os
-from aiohttp import ClientSession
+import hashlib
+from aiohttp import ClientSession, MultipartWriter
 from pydantic import ValidationError
 from loguru import logger
 
 from app.schemas.ai import AITaskCreateRequestSchema, AITaskCreateResponseSchema
-from app.schemas.ai import AITaskStatusResponseSchema
+from app.schemas.ai import AITaskStatusResponseSchema, AISongSchema
+
+token = os.getenv("API_TOKEN")
+member_id = os.getenv("API_MEMBER_ID")
+
+
+def _pack_generate_schema(**data):
+    a = """-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="mv"
+
+v4.0
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="lyrics"
+
+{lyrics}
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="gender"
+
+random
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="instrumental"
+
+{instrumental}
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="g_num"
+
+2
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="is_public"
+
+0
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="is_auto"
+
+0
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="prompt"
+
+{prompt}
+-----------------------------406336764539455136491136147690
+Content-Disposition: form-data; name="token"
+
+{token}
+-----------------------------406336764539455136491136147690--"""
+    return a.format(**data)
 
 
 class AIRepository:
     base_url = 'https://api.topmediai.com'
-    token = os.getenv("X_API_KEY", "invalid")
+    email = os.getenv("API_EMAIL")
+    password = hashlib.md5(os.getenv("API_PASSWORD").encode()).hexdigest()
 
-    async def _post_request(self, path: str, json: dict) -> dict:
-        async with ClientSession(self.base_url) as session:
-            async with session.post(path, json=json, headers={'x-api-key': self.token}) as response:
-                assert response.status // 100 == 2, await response.text()
-                return await response.json()
+    def __init__(self):
+        global token, member_id
+        self.token = token
+        self.member_id = member_id
 
-    async def _get_request(self, path: str, params: dict) -> dict:
-        async with ClientSession(self.base_url) as session:
-            async with session.get(path, params=params, headers={'x-api-key': self.token}) as response:
-                assert response.status // 100 == 2, await response.text()
-                return await response.json()
+    async def _do_request(self, method, url: str, json: dict = None, headers = None, params: dict = None, data=None):
+        async with ClientSession() as session:
+            async with session.request(method, url, json=json, headers=headers, params=params, data=data) as resp:
+                assert resp.status // 100 == 2, await resp.text()
+                return await resp.json()
 
-    async def submit(self, schema: AITaskCreateRequestSchema) -> AITaskCreateResponseSchema:
-        response = await self._post_request('/v2/submit', schema.model_dump())
-        try:
-            return AITaskCreateResponseSchema.model_validate(response)
-        except ValidationError as e:
-            logger.error("Invalid submit response: " + str(response))
+    async def _get_balance(self) -> int:
+        if self.token is None:
+            raise ValueError("Try to do request while not logged in")
+        response = await self._do_request(
+            "GET",
+            "https://tp-gateway-api.topmediai.com/tp_member/permission/info",
+            params={"product_id": 12, "token": self.token},
+            headers={"Authorization": self.token, "Token": self.token}
+        )
+        return response["data"]["music"]["left"]
+
+    async def _login(self) -> dict:
+        global token, member_id
+        response = await self._do_request(
+            "POST",
+            "https://account-api.topmediai.com/account/login",
+            params={
+                "email": self.email,
+                "password": self.password,
+                "information_sources": "https://account.topmediai.com",
+                "source_site": "www.topmediai.com"
+            }
+        )
+        logger.debug("Login response: " + str(response))
+        self.member_id = response["data"]["member_id"]
+        self.token = response["data"]["token"]
+        token = self.token
+        member_id = self.member_id
+
+    async def generate(self, schema: AITaskCreateRequestSchema) -> AITaskCreateResponseSchema:
+        async with ClientSession() as session:
+            resp = await session.post(
+                "https://aimusic-api.topmediai.com/generate/music",
+                data=_pack_generate_schema(**(schema.model_dump() | {"token": self.token})),
+                headers={"Authorization": self.token, "Token": self.token, "Content-Type": "multipart/form-data; boundary=---------------------------406336764539455136491136147690"},
+            )
+            assert resp.status // 100 == 2, await resp.text()
+            schema = AITaskCreateResponseSchema.model_validate(await resp.json())
+            logger.debug("Generate response: " + str(schema.model_dump()))
+            return schema
 
     async def query(self, song_id: str) -> AITaskStatusResponseSchema:
-        response = await self._get_request('/v2/query', {'song_id': song_id})
+        if self.token is None:
+            raise ValueError("Try to do request while not logged in")
+        response = await self._do_request(
+            "GET",
+            "https://aimusic-api.topmediai.com/generate/query",
+            params={"uuid": song_id, "token": self.token},
+            headers={"Authorization": self.token, "Token": self.token}
+        )
+        logger.debug("Query response: " + str(response))
         return AITaskStatusResponseSchema.model_validate(response)
+
+    def make_audio_url(self, song: AISongSchema) -> str:
+        return "https://files.topmediai.com/aimusic/{m}/{i}-audio.mp3".format(m=self.member_id, i=song.music[0].item_uuid)
+
+    @classmethod
+    async def login(cls):
+        global token
+        if token is None:
+            self = cls()
+            await self._login()
+            logger.debug("Left balance: " + str(await self._get_balance()))
 

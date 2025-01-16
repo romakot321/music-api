@@ -3,7 +3,7 @@ from uuid import UUID
 
 
 class SongTaskSchema(BaseModel):
-    id: UUID
+    id: str
     is_finished: bool
     audio_url: HttpUrl | None = None
 
