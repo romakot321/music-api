@@ -92,6 +92,8 @@ class AIRepository:
             }
         )
         logger.debug("Login response: " + str(response))
+        if not response["data"]:
+            raise ValueError("Invalid api credentials")
         self.member_id = response["data"]["member_id"]
         self.token = response["data"]["token"]
         token = self.token
@@ -105,8 +107,12 @@ class AIRepository:
                 headers={"Authorization": self.token, "Token": self.token, "Content-Type": "multipart/form-data; boundary=---------------------------406336764539455136491136147690"},
             )
             assert resp.status // 100 == 2, await resp.text()
-            schema = AITaskCreateResponseSchema.model_validate(await resp.json())
-            logger.debug("Generate response: " + str(schema.model_dump()))
+            data = await resp.json()
+            logger.debug("Generate response: " + str(data))
+            if isinstance(data["data"], dict) and data["data"].get('code') == -2:
+                await self._login()
+                return await self.generate(schema)
+            schema = AITaskCreateResponseSchema.model_validate(data)
             return schema
 
     async def query(self, song_id: str) -> AITaskStatusResponseSchema:
@@ -119,6 +125,9 @@ class AIRepository:
             headers={"Authorization": self.token, "Token": self.token}
         )
         logger.debug("Query response: " + str(response))
+        if isinstance(response["data"], dict) and response["data"].get('code') == -2:
+            await self._login()
+            return await self.query(song_id)
         return AITaskStatusResponseSchema.model_validate(response)
 
     def make_audio_url(self, song: AISongSchema) -> str:
