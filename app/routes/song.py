@@ -15,6 +15,7 @@ valid_access_token = os.getenv("ACCESS_TOKEN", "123")
 
 @router.post(
     '',
+    response_model=SongTaskSchema,
     description="""
         Endpoint for start a task for music generation.
         Music can be pure or with voice. Voice will be generated also from prompt.
@@ -29,7 +30,7 @@ async def create_song_task(
         request: Request,
         access_token: str = Header(),
         service: SongService = Depends()
-) -> Response:
+):
     if access_token != valid_access_token:
         raise HTTPException(401)
     return await service.create(schema)
