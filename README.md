@@ -2,8 +2,7 @@
 Simple to use API for generating music with lyrics.
 
 ## Documentation:
-Available at http://localhost:8000/docs as Swagger.
-!WARNING! If /city/weather response 404 Not found, then you need to wait while service load weather from external api.
+Available at http://localhost:8000/docs as Swagger after run.
 
 ## Run:
 
