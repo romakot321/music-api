@@ -1,8 +1,10 @@
 import os
 import hashlib
+import asyncio
 from aiohttp import ClientSession, MultipartWriter
 from pydantic import ValidationError
 from loguru import logger
+from uuid import uuid4
 
 from app.schemas.ai import AITaskCreateRequestSchema, AITaskCreateResponseSchema
 from app.schemas.ai import AITaskStatusResponseSchema, AISongSchema
@@ -50,6 +52,49 @@ Content-Disposition: form-data; name="token"
 {token}
 -----------------------------406336764539455136491136147690--"""
     return a.format(**data)
+
+
+class AIRepositoryMocked:
+    async def generate(self, schema: AITaskCreateRequestSchema) -> AITaskCreateResponseSchema:
+        await asyncio.sleep(1)  # Simulating request sending
+        return AITaskCreateResponseSchema(
+            status=200,
+            message="Success",
+            data=[
+                AISongSchema(
+                    id=100000,
+                    is_public=0,
+                    music=[
+                        {"audio_duration": "Infinite", "audio_file": "http://example.com",
+                        "image_file": "http://example.com", "item_uuid": str(uuid4()),
+                        "lyric": schema.lyrics, "tags": schema.prompt, "title": "title"}
+                    ],
+                    part=1,
+                    uuid=str(uuid4())
+                )
+            ]
+        )
+
+    async def query(self, song_id: str) -> AITaskStatusResponseSchema:
+        await asyncio.sleep(1)  # Simulating request sending
+        return AITaskStatusResponseSchema(
+            status=200,
+            message="Success",
+            data=[
+                AITaskStatusData(
+                    status=0,
+                    uuid=song_id,
+                    info=[{"audio_duration": 100, "audio_file": "asdfa", "image_file": "safdda"}]
+                )
+            ]
+        )
+
+    def make_audio_url(self, song: AISongSchema) -> str:
+        return "https://google.com"
+
+    @classmethod
+    async def login(cls):
+        pass
 
 
 class AIRepository:
@@ -141,3 +186,6 @@ class AIRepository:
             await self._login()
             logger.debug("Left balance: " + str(await self._get_balance()))
 
+
+if int(os.getenv("USE_MOCK", 0)):
+    AIRepository = AIRepositoryMocked

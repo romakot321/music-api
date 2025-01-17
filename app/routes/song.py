@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request, Header, HTTPException, Response
+from fastapi import BackgroundTasks
 from uuid import UUID
 import os
 
@@ -28,12 +29,16 @@ valid_access_token = os.getenv("ACCESS_TOKEN", "123")
 async def create_song_task(
         schema: SongTaskCreateSchema,
         request: Request,
+        background_tasks: BackgroundTasks,
         access_token: str = Header(),
         service: SongService = Depends()
 ):
     if access_token != valid_access_token:
         raise HTTPException(401)
-    return await service.create(schema)
+    response = await service.create()
+    print(response)
+    background_tasks.add_task(service.send, schema, response.id)
+    return response
 
 @router.get(
     '/{song_id}',

@@ -3,6 +3,7 @@ from fastapi import status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi_utils.tasks import repeat_every
 from pydantic_settings import BaseSettings
 from loguru import logger
 from slowapi import _rate_limit_exceeded_handler
@@ -10,6 +11,7 @@ from slowapi.errors import RateLimitExceeded
 from contextlib import asynccontextmanager
 
 from app.repositories.ai import AIRepository
+from app.services.song import SongService
 
 
 class ProjectSettings(BaseSettings):
@@ -39,9 +41,17 @@ def register_cors(application):
         allow_headers=['*'],
     )
 
+@repeat_every(seconds=15)
+async def songs_update_task():
+    try:
+        await SongService.update_songs_status()
+    except Exception as e:
+        logger.exception(e)
+
 
 @asynccontextmanager
 async def lifespan(app):
+    await songs_update_task()
     await AIRepository.login()
     yield
 
