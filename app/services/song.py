@@ -83,6 +83,6 @@ class SongService:
         self = cls(ai_repository=AIRepository(), song_repository=SongRepository(session=db_session))
 
         songs = await self.song_repository.list_in_progress()
-        check_tasks = [self._check(song.id) for song in songs]
+        check_tasks = [self._check(song) for song in songs]
         await asyncio.gather(*check_tasks)
 
