@@ -46,7 +46,7 @@ class SongRepository:
                 data = await self.session.hgetall(key)
                 if not data:
                     continue
-                if not (data["is_finished"] + data["is_invalid"]):
+                if not (int(data["is_finished"]) + int(data["is_invalid"])):
                     resp.append(SongTaskSchema(**data))
 
         return resp
