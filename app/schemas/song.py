@@ -1,29 +1,32 @@
-from pydantic import BaseModel, HttpUrl, root_validator
+from pydantic import BaseModel, HttpUrl, root_validator, ConfigDict, model_validator
+from enum import Enum
 from uuid import UUID
 
 
 class SongTaskSchema(BaseModel):
-    id: str
+    id: UUID
+    user_id: UUID
     is_finished: bool
     is_invalid: bool = False
     api_id: str | None = None
     audio_url: HttpUrl | None = None
 
-    @root_validator(pre=True)
+    @model_validator(mode='before')
     @classmethod
-    def translate_empty_to_none(cls, values) -> HttpUrl | None:
-        if not isinstance(values, dict):
-            return {}
-        audio_url = values.get("audio_url")
-        if isinstance(audio_url, str) and not audio_url:
-            values["audio_url"] = None
-        api_id = values.get("api_id")
-        if isinstance(api_id, str) and not api_id:
-            values["api_id"] = None
-        return values
+    def translate_status(cls, state):
+        if not isinstance(state, dict):
+            state = state.__dict__
+        if state.get('status') and isinstance(state["status"], Enum):
+            state["is_finished"] = state["status"].value == "finished"
+            state["is_invalid"] = state["status"].value == "error"
+        return state
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SongTaskCreateSchema(BaseModel):
     prompt: str
     with_voice: bool
+    user_id: UUID
+    app_bundle: str
 

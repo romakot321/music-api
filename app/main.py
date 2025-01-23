@@ -13,6 +13,8 @@ from contextlib import asynccontextmanager
 from app.repositories.ai import AIRepository
 from app.services.song import SongService
 
+from app.db.admin import attach_admin_panel
+
 
 class ProjectSettings(BaseSettings):
     LOCAL_MODE: bool = False
@@ -72,6 +74,8 @@ def init_web_application():
     from app.routes.song import router as song_router
 
     application.include_router(song_router)
+
+    attach_admin_panel(application)
 
     return application
 

@@ -35,8 +35,7 @@ async def create_song_task(
 ):
     if access_token != valid_access_token:
         raise HTTPException(401)
-    response = await service.create()
-    print(response)
+    response = await service.create(schema)
     background_tasks.add_task(service.send, schema, response.id)
     return response
 

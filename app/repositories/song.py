@@ -2,52 +2,33 @@ from fastapi import Depends
 from loguru import logger
 from uuid import uuid4
 
-from app.db.base import get_session
 from app.schemas.song import SongTaskSchema
+from app.db.tables import Song, SongStatus
+from .base import BaseRepository
 
 
-class SongRepository:
-    def __init__(self, session=Depends(get_session)):
-        self.session = session
+class SongRepository(BaseRepository):
+    base_table = Song
 
-    def _generate_id(self) -> str:
-        return str(uuid4())
+    async def create(self, user_id: str, app_bundle: str) -> SongTaskSchema:
+        model = Song(user_id=user_id, app_bundle=app_bundle)
+        model = await self._create(model)
+        return SongTaskSchema.model_validate(model)
 
-    async def create(self) -> SongTaskSchema:
-        data = {
-            "id": self._generate_id(),
-            "is_finished": 0,
-            "is_invalid": 0,
-            "api_id": "",
-            "audio_url": ""
-        }
-        await self.session.hset(data["id"], mapping=data)
-        return SongTaskSchema(**data)
+    async def update(self, song_id: str, **fields):
+        data = {k: v for k, v in fields.items() if v is not None}
 
-    async def update(self, schema: SongTaskSchema):
-        data = schema.model_dump()
-        data["is_finished"] = int(data["is_finished"])
-        data["is_invalid"] = int(data["is_invalid"])
-        await self.session.hset(schema.id, mapping=data)
+        if "is_invalid" in data and data.pop("is_invalid"):
+            data['status'] = SongStatus.error
+        elif "is_finished" in data and data.pop("is_finished"):
+            data['status'] = SongStatus.finished
 
-    async def get(self, song_id: str) -> SongTaskSchema | None:
-        data = await self.session.hgetall(song_id)
-        if not data:
-            return None
-        return SongTaskSchema.model_validate(data)
+        return SongTaskSchema.model_validate(await self._update(song_id, **data))
+
+    async def get(self, song_id: str) -> SongTaskSchema:
+        model = await self._get_one(id=song_id)
+        return SongTaskSchema.model_validate(model)
 
     async def list_in_progress(self) -> list[SongTaskSchema]:
-        resp = []
-        cursor = b'0'
-
-        while cursor:
-            cursor, keys = await self.session.scan(cursor)
-            for key in keys:
-                data = await self.session.hgetall(key)
-                if not data:
-                    continue
-                if not (int(data["is_finished"]) + int(data["is_invalid"])):
-                    resp.append(SongTaskSchema(**data))
-
-        return resp
+        return list(await self._get_many(count=1000000, status=SongStatus.queued))
 

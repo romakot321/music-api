@@ -1,23 +1,28 @@
-version: '3'
-
 services:
   app:
     build:
       context: ./
     container_name: music_app
-    ports:
-      - "127.0.0.1:6196:80"
     depends_on:
-      - redis
+      - postgres
     env_file:
       - .env
     restart: always
     networks:
       default:
+      global_network:
+    ports:
+      - "8021:80"
 
-  redis:
-    image: redis:alpine
-    container_name: music_redis
+  postgres:
+    image: postgres:latest
+    container_name: music_db
     restart: always
+    env_file:
+      - .env
     networks:
       default:
+
+networks:
+  global_network:
+    external: true
