@@ -178,6 +178,9 @@ class AIRepository:
     def make_audio_url(self, song: AISongSchema) -> str:
         return "https://files.topmediai.com/aimusic/{m}/{i}-audio.mp3".format(m=self.member_id, i=song.music[0].item_uuid)
 
+    def make_image_url(self, song: AISongSchema) -> str:
+        return "https://files.topmediai.com/aimusic/{m}/{i}-image.png".format(m=self.member_id, i=song.music[0].item_uuid)
+
     @classmethod
     async def login(cls):
         global token

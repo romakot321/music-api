@@ -43,7 +43,8 @@ class SongService:
             str(song_id),
             api_id=song.uuid,
             is_finished=False,
-            audio_url=self.ai_repository.make_audio_url(song)
+            audio_url=self.ai_repository.make_audio_url(song),
+            image_url=self.ai_repository.make_image_url(song),
         )
 
     async def get(self, song_id: UUID) -> SongTaskSchema:
@@ -61,7 +62,8 @@ class SongService:
             song.id,
             api_id=song.api_id,
             is_finished=task.status == AITaskStatus.finished,
-            audio_url=song.audio_url
+            audio_url=song.audio_url,
+            image_url=song.image_url
         )
 
     @classmethod

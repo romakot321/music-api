@@ -10,6 +10,7 @@ class SongTaskSchema(BaseModel):
     is_invalid: bool = False
     api_id: str | None = None
     audio_url: HttpUrl | None = None
+    image_url: HttpUrl | None = None
 
     @model_validator(mode='before')
     @classmethod
