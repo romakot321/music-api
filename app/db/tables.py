@@ -47,4 +47,5 @@ class Song(BaseMixin, Base):
     app_bundle: M[str]
     api_id: M[str | None] = column(nullable=True)
     audio_url: M[str | None] = column(nullable=True)
+    image_url: M[str | None] = column(nullable=True)
 
