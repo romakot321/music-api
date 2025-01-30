@@ -1,6 +1,7 @@
 from fastapi import Depends
 from loguru import logger
 from uuid import uuid4
+from sqlalchemy import select, or_
 
 from app.schemas.song import SongTaskSchema
 from app.db.tables import Song, SongStatus
@@ -29,6 +30,14 @@ class SongRepository(BaseRepository):
         model = await self._get_one(id=song_id)
         return SongTaskSchema.model_validate(model)
 
-    async def list_in_progress(self) -> list[SongTaskSchema]:
+    async def is_any_song_generating(self) -> bool:
+        query = select(self.base_table).where(_or(self.base_table.comment == "sending", self.base_table.status == SongStatus.queued)).limit(1)
+        model = await self.session.scalar(query)
+        return model is not None
+
+    async def list_in_progress(self) -> list[Song]:
         return list(await self._get_many(count=1000000, status=SongStatus.queued))
+
+    async def list_unsended(self) -> list[Song]:
+        return list(await self._get_many(count=1000000, status=None, exclude_none=False))
 

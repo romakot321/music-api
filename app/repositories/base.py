@@ -134,10 +134,11 @@ class BaseRepository[Table: BaseTable]:
         return self._query_filter(query, **kwargs)
 
     @staticmethod
-    def _query_filter(query, **kwargs):
+    def _query_filter(query, exclude_none=True, **kwargs):
         for key, value in kwargs.items():
-            if value is not None:
-                query = query.filter_by(**{key: value})
+            if exclude_none and value is None:
+                continue
+            query = query.filter_by(**{key: value})
         return query
 
     def _like_filter(self, **kwargs) -> Select:

@@ -34,6 +34,7 @@ class AITaskCreateRequestSchema(BaseModel):
 
 
 class AITaskStatus(int, Enum):
+    error = 3
     running = 2
     finished = 0
 

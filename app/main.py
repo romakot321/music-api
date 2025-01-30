@@ -51,6 +51,14 @@ async def songs_update_task():
         logger.exception(e)
 
 
+@repeat_every(seconds=30)
+async def process_songs_queue():
+    try:
+        await SongService.process_songs_queue()
+    except Exception as e:
+        logger.exception(e)
+
+
 @asynccontextmanager
 async def lifespan(app):
     await songs_update_task()

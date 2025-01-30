@@ -21,9 +21,15 @@ class SongService:
         self.song_repository = song_repository
 
     async def create(self, schema: SongTaskCreateSchema) -> SongTaskSchema:
-        return await self.song_repository.create(user_id=schema.user_id, app_bundle=schema.app_bundle)
+        return await self.song_repository.create(
+            user_id=schema.user_id,
+            app_bundle=schema.app_bundle,
+            prompt=schema.prompt,
+            with_voice=schema.with_voice
+        )
 
-    async def send(self, schema: SongTaskCreateSchema, song_id: UUID):
+    async def _send(self, schema: SongTaskCreateSchema, song_id: UUID):
+        await self.song_repository.update(str(song_id), comment="sending")
         request = AITaskCreateRequestSchema(
             prompt=schema.prompt,
             lyrics=(schema.prompt if schema.with_voice else "[Instrumental]"),
@@ -31,8 +37,17 @@ class SongService:
         )
 
         logger.debug("Sending submit request to AI: " + str(request.model_dump()))
-        response = await self.ai_repository.generate(request)
-        logger.debug("Received response: " + str(response.model_dump()))
+        try:
+            response = await self.ai_repository.generate(request)
+            logger.debug("Received response: " + str(response.model_dump()))
+        except Exception as e:
+            await self.song_repository.update(
+                str(song_id),
+                is_finished=False,
+                is_invalid=True,
+                comment=str(e)
+            )
+            return schema
 
         if not response.data or not response.data[0].music:  # Error occurs, set song to invalid
             await self.song_repository.update(str(song_id), is_finished=False, is_invalid=True)
@@ -45,6 +60,7 @@ class SongService:
             is_finished=False,
             audio_url=self.ai_repository.make_audio_url(song),
             image_url=self.ai_repository.make_image_url(song),
+            comment=None
         )
 
     async def get(self, song_id: UUID) -> SongTaskSchema:
@@ -62,9 +78,30 @@ class SongService:
             song.id,
             api_id=song.api_id,
             is_finished=task.status == AITaskStatus.finished,
+            is_invalid=task.status == AITaskStatus.error,
             audio_url=song.audio_url,
-            image_url=song.image_url
+            image_url=song.image_url,
+            comment=None
         )
+
+    @classmethod
+    async def process_songs_queue(cls):
+        session_getter = get_session()
+        db_session = await anext(session_getter)
+        self = cls(ai_repository=AIRepository(), song_repository=SongRepository(session=db_session))
+
+        if (await self.song_repository.is_any_song_generating()):
+            return
+        songs = await self.song_repository.list_unsended()
+        if not songs:
+            return
+        schema = SongTaskCreateSchema.model_validate(songs[0])
+        await self._send(schema, songs[0].id)
+
+        try:
+            await anext(session_getter)
+        except StopAsyncIteration:
+            pass
 
     @classmethod
     async def update_songs_status(cls):

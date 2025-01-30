@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped as M
 from sqlalchemy.orm import mapped_column as column
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from sqlalchemy.sql.expression import false
+from sqlalchemy.sql.expression import false, true
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy.ext.associationproxy import AssociationProxy
 
@@ -42,10 +42,12 @@ class SongStatus(Enum):
 
 class Song(BaseMixin, Base):
     user_id: M[UUID] = column(primary_key=True, index=True)
-    status: M[SongStatus] = column(default=SongStatus.queued)
-    comment: M[str | None] = column(nullable=True)
-    app_bundle: M[str]
+    status: M[SongStatus | None] = column(default=None)
+    comment: M[str | None] = column(nullable=True)  # If comment == sending, then song is in process of sending to ai
     api_id: M[str | None] = column(nullable=True)
     audio_url: M[str | None] = column(nullable=True)
     image_url: M[str | None] = column(nullable=True)
+    app_bundle: M[str]
+    prompt: M[str] = column(server_default="")
+    with_voice: M[bool] = column(server_default=true())
 

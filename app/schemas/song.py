@@ -11,6 +11,7 @@ class SongTaskSchema(BaseModel):
     api_id: str | None = None
     audio_url: HttpUrl | None = None
     image_url: HttpUrl | None = None
+    comment: str | None = None
 
     @model_validator(mode='before')
     @classmethod
@@ -30,4 +31,6 @@ class SongTaskCreateSchema(BaseModel):
     with_voice: bool
     user_id: UUID
     app_bundle: str
+
+    model_config = ConfigDict(from_attributes=True)
 
