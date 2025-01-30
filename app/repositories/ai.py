@@ -1,7 +1,7 @@
 import os
 import hashlib
 import asyncio
-from aiohttp import ClientSession, MultipartWriter
+from aiohttp import ClientSession, MultipartWriter, ClientTimeout
 from pydantic import ValidationError
 from loguru import logger
 from uuid import uuid4
@@ -101,6 +101,7 @@ class AIRepository:
     base_url = 'https://api.topmediai.com'
     email = os.getenv("API_EMAIL")
     password = hashlib.md5(os.getenv("API_PASSWORD").encode()).hexdigest()
+    REQUEST_TIMEOUT = 60
 
     def __init__(self):
         global token, member_id
@@ -108,7 +109,8 @@ class AIRepository:
         self.member_id = member_id
 
     async def _do_request(self, method, url: str, json: dict = None, headers = None, params: dict = None, data=None):
-        async with ClientSession() as session:
+        session_timeout = ClientTimeout(total=None, sock_connect=self.REQUEST_TIMEOUT, sock_read=self.REQUEST_TIMEOUT)
+        async with ClientSession(timeout=session_timeout) as session:
             async with session.request(method, url, json=json, headers=headers, params=params, data=data) as resp:
                 assert resp.status // 100 == 2, await resp.text()
                 return await resp.json()
@@ -145,7 +147,8 @@ class AIRepository:
         member_id = self.member_id
 
     async def generate(self, schema: AITaskCreateRequestSchema) -> AITaskCreateResponseSchema:
-        async with ClientSession() as session:
+        session_timeout = ClientTimeout(total=None, sock_connect=self.REQUEST_TIMEOUT, sock_read=self.REQUEST_TIMEOUT)
+        async with ClientSession(timeout=session_timeout) as session:
             resp = await session.post(
                 "https://aimusic-api.topmediai.com/generate/music",
                 data=_pack_generate_schema(**(schema.model_dump() | {"token": self.token})),

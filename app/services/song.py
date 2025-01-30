@@ -2,6 +2,7 @@ from fastapi import Depends, HTTPException
 from uuid import UUID
 from loguru import logger
 import asyncio
+import datetime as dt
 
 from app.repositories.ai import AIRepository
 from app.repositories.song import SongRepository
@@ -9,9 +10,12 @@ from app.schemas.song import SongTaskCreateSchema, SongTaskSchema
 from app.schemas.ai import AITaskCreateRequestSchema, AITaskCreateResponseSchema
 from app.schemas.ai import AITaskStatusResponseSchema, AITaskStatus
 from app.db.base import get_session
+from app.db.tables import Song
 
 
 class SongService:
+    GENERATE_TIMEOUT = 10 * 60
+
     def __init__(
             self,
             ai_repository: AIRepository = Depends(),
@@ -41,7 +45,16 @@ class SongService:
         try:
             response = await self.ai_repository.generate(request)
             logger.debug("Received response: " + str(response.model_dump()))
+        except TimeoutError:
+            await self.song_repository.update(
+                str(song_id),
+                is_finished=False,
+                is_invalid=True,
+                comment="Timeout"
+            )
+            return schema
         except Exception as e:
+            logger.exception(e)
             await self.song_repository.update(
                 str(song_id),
                 is_finished=False,
@@ -67,8 +80,15 @@ class SongService:
     async def get(self, song_id: UUID) -> SongTaskSchema:
         return await self.song_repository.get(str(song_id))
 
-    async def _check(self, song: SongTaskSchema):
+    async def _check(self, song: Song):
         if not song.api_id:
+            return
+        if (dt.datetime.now() - song.updated_at).seconds >= self.GENERATE_TIMEOUT:
+            await self.song_repository.update(
+                song.id,
+                is_invalid=True,
+                comment="Timeout"
+            )
             return
         response = await self.ai_repository.query(song.api_id)
         if not response.data:

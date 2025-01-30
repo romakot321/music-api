@@ -51,7 +51,7 @@ async def songs_update_task():
         logger.exception(e)
 
 
-@repeat_every(seconds=30)
+@repeat_every(seconds=15)
 async def process_songs_queue():
     try:
         await SongService.process_songs_queue()
@@ -62,6 +62,7 @@ async def process_songs_queue():
 @asynccontextmanager
 async def lifespan(app):
     await songs_update_task()
+    await process_songs_queue()
     await AIRepository.login()
     yield
 

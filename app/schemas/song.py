@@ -1,6 +1,7 @@
 from pydantic import BaseModel, HttpUrl, root_validator, ConfigDict, model_validator
 from enum import Enum
 from uuid import UUID
+import datetime as dt
 
 
 class SongTaskSchema(BaseModel):
@@ -21,6 +22,9 @@ class SongTaskSchema(BaseModel):
         if state.get('status') and isinstance(state["status"], Enum):
             state["is_finished"] = state["status"].value == "finished"
             state["is_invalid"] = state["status"].value == "error"
+        elif state.get('status') is None:
+            state["is_finished"] = False
+            state["is_invalid"] = False
         return state
 
     model_config = ConfigDict(from_attributes=True)
