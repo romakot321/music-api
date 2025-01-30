@@ -49,5 +49,6 @@ class Song(BaseMixin, Base):
     image_url: M[str | None] = column(nullable=True)
     app_bundle: M[str]
     prompt: M[str] = column(server_default="")
+    lyrics: M[str] = column(server_default="")
     with_voice: M[bool] = column(server_default=true())
 

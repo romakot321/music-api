@@ -25,14 +25,15 @@ class SongService:
             user_id=schema.user_id,
             app_bundle=schema.app_bundle,
             prompt=schema.prompt,
-            with_voice=schema.with_voice
+            with_voice=schema.with_voice,
+            lyrics=schema.lyrics
         )
 
     async def _send(self, schema: SongTaskCreateSchema, song_id: UUID):
         await self.song_repository.update(str(song_id), comment="sending")
         request = AITaskCreateRequestSchema(
             prompt=schema.prompt,
-            lyrics=(schema.prompt if schema.with_voice else "[Instrumental]"),
+            lyrics=(schema.lyrics if schema.with_voice else "[Instrumental]"),
             instrumental=int(not schema.with_voice)
         )
 

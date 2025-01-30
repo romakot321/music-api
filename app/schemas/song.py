@@ -31,6 +31,7 @@ class SongTaskCreateSchema(BaseModel):
     with_voice: bool
     user_id: UUID
     app_bundle: str
+    lyrics: str
 
     model_config = ConfigDict(from_attributes=True)
 
