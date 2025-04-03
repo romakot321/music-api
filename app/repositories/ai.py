@@ -101,7 +101,7 @@ class AIRepository:
     base_url = 'https://api.topmediai.com'
     email = os.getenv("API_EMAIL")
     password = hashlib.md5(os.getenv("API_PASSWORD").encode()).hexdigest()
-    REQUEST_TIMEOUT = 60
+    REQUEST_TIMEOUT = 5 * 60
 
     def __init__(self):
         global token, member_id
@@ -157,7 +157,7 @@ class AIRepository:
             assert resp.status // 100 == 2, await resp.text()
             data = await resp.json()
             logger.debug("Generate response: " + str(data))
-            if isinstance(data["data"], dict) and data["data"].get('code') == -2:
+            if isinstance(data["data"], dict) and (data["data"].get('code') == -2 or data.get("message") == "Unauthorized"):
                 await self._login()
                 return await self.generate(schema)
             schema = AITaskCreateResponseSchema.model_validate(data)
@@ -179,10 +179,12 @@ class AIRepository:
         return AITaskStatusResponseSchema.model_validate(response)
 
     def make_audio_url(self, song: AISongSchema) -> str:
-        return "https://files.topmediai.com/aimusic/{m}/{i}-audio.mp3".format(m=self.member_id, i=song.music[0].item_uuid)
+        # return "https://files.topmediai.com/aimusic/{m}/{i}-audio.mp3".format(m=self.member_id, i=song.music[0].item_uuid)
+        return "https://files.topmediai.com/aimusic/{i}/{t}.mp3".format(t=song.music[0].title, i=song.music[0].item_uuid)
 
     def make_image_url(self, song: AISongSchema) -> str:
-        return "https://files.topmediai.com/aimusic/{m}/{i}-image.png".format(m=self.member_id, i=song.music[0].item_uuid)
+        # return "https://files.topmediai.com/aimusic/{m}/{i}-image.png".format(m=self.member_id, i=song.music[0].item_uuid)
+        return "https://files.topmediai.com/aimusic/app/{i}/{t}.jpeg".format(t=song.music[0].title, i=song.music[0].item_uuid)
 
     @classmethod
     async def login(cls):
