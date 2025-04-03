@@ -6,7 +6,7 @@ import datetime as dt
 
 from app.repositories.ai import AIRepository
 from app.repositories.song import SongRepository
-from app.schemas.song import SongTaskCreateSchema, SongTaskSchema
+from app.schemas.song import SongLyricsGenerateSchema, SongLyricsSchema, SongTaskCreateSchema, SongTaskSchema
 from app.schemas.ai import AITaskCreateRequestSchema, AITaskCreateResponseSchema
 from app.schemas.ai import AITaskStatusResponseSchema, AITaskStatus
 from app.db.base import get_session
@@ -32,6 +32,10 @@ class SongService:
             with_voice=schema.with_voice,
             lyrics=schema.lyrics
         )
+
+    async def generate_lyrics(self, schema: SongLyricsGenerateSchema) -> SongLyricsSchema:
+        lyrics = await self.ai_repository.generate_lyrics(schema.prompt)
+        return SongLyricsSchema(lyrics=lyrics)
 
     async def _send(self, schema: SongTaskCreateSchema, song_id: UUID):
         await self.song_repository.update(str(song_id), comment="sending")

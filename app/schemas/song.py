@@ -4,6 +4,14 @@ from uuid import UUID
 import datetime as dt
 
 
+class SongLyricsGenerateSchema(BaseModel):
+    prompt: str
+
+
+class SongLyricsSchema(BaseModel):
+    lyrics: str
+
+
 class SongTaskSchema(BaseModel):
     id: UUID
     user_id: UUID

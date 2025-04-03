@@ -157,11 +157,26 @@ class AIRepository:
             assert resp.status // 100 == 2, await resp.text()
             data = await resp.json()
             logger.debug("Generate response: " + str(data))
-            if isinstance(data["data"], dict) and data["data"].get('code') == -2:
+            if isinstance(data["data"], dict) and (data["data"].get('code') == -2 or data.get("message") == "Unauthorized"):
                 await self._login()
                 return await self.generate(schema)
-            schema = AITaskCreateResponseSchema.model_validate(data)
-            return schema
+            return AITaskCreateResponseSchema.model_validate(data)
+
+    async def generate_lyrics(self, prompt: str) -> str:
+        if self.token is None:
+            raise ValueError("Try to do request while not logged in")
+        response = await self._do_request(
+            "GET",
+            "https://aimusic-api.topmediai.com/v2/prompt-to-lyrics",
+            params={"prompt": prompt, "token": self.token},
+            headers={"Authorization": self.token, "Token": self.token}
+        )
+        logger.debug("Lyrics response: " + str(response))
+        if isinstance(response["response"], dict) and (response["response"].get('code') == -2 or response.get("message") == "Unauthorized"):
+            await self._login()
+            return await self.generate_lyrics(prompt)
+
+        return response["data"]["lyrics"]
 
     async def query(self, song_id: str) -> AITaskStatusResponseSchema:
         if self.token is None:
@@ -173,7 +188,7 @@ class AIRepository:
             headers={"Authorization": self.token, "Token": self.token}
         )
         logger.debug("Query response: " + str(response))
-        if isinstance(response["data"], dict) and response["data"].get('code') == -2:
+        if isinstance(response["response"], dict) and (response["response"].get('code') == -2 or response.get("message") == "Unauthorized"):
             await self._login()
             return await self.query(song_id)
         return AITaskStatusResponseSchema.model_validate(response)
