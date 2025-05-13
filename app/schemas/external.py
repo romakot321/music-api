@@ -30,7 +30,7 @@ class ExternalTaskCreateRequestSchema(BaseModel):
     model_version: str = 'v3.5'
 
 
-class ExternalTaskStatus(int, Enum):
+class ExternalTaskStatus(str, Enum):
     running = "RUNNING"
     finished = "FINISHED"
     error = "ERROR"

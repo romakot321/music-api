@@ -63,7 +63,7 @@ async def process_songs_queue():
 async def lifespan(app):
     await songs_update_task()
     await process_songs_queue()
-    await AIRepository.login()
+    # await AIRepository.login()
     yield
 
 

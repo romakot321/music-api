@@ -45,6 +45,7 @@ class SongService:
     async def generate_lyrics(
         self, schema: SongLyricsGenerateSchema
     ) -> SongLyricsSchema:
+        logger.debug(schema)
         lyrics = await self.external_repository.generate_lyrics(schema.prompt)
         return SongLyricsSchema(lyrics=lyrics)
 
@@ -128,8 +129,9 @@ class SongService:
         songs = await self.song_repository.list_unsended()
         if not songs:
             return
-        schema = SongTaskCreateSchema.model_validate(songs[0])
-        await self._send(schema, songs[0].id)
+        for song in songs[:3]:
+            schema = SongTaskCreateSchema.model_validate(song)
+            await self._send(schema, song.id)
 
         try:
             await anext(session_getter)

@@ -172,7 +172,7 @@ class AIRepository:
             headers={"Authorization": self.token, "Token": self.token}
         )
         logger.debug("Lyrics response: " + str(response))
-        if isinstance(response["response"], dict) and (response["response"].get('code') == -2 or response.get("message") == "Unauthorized"):
+        if isinstance(response["data"], dict) and (response["data"].get('code') == -2 or response.get("message") == "Unauthorized"):
             await self._login()
             return await self.generate_lyrics(prompt)
 
@@ -188,7 +188,7 @@ class AIRepository:
             headers={"Authorization": self.token, "Token": self.token}
         )
         logger.debug("Query response: " + str(response))
-        if isinstance(response["response"], dict) and (response["response"].get('code') == -2 or response.get("message") == "Unauthorized"):
+        if isinstance(response["data"], dict) and (response["data"].get('code') == -2 or response.get("message") == "Unauthorized"):
             await self._login()
             return await self.query(song_id)
         return AITaskStatusResponseSchema.model_validate(response)

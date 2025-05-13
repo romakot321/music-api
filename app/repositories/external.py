@@ -21,23 +21,22 @@ class ExternalRepository:
     async def generate(self, schema: ExternalTaskCreateRequestSchema) -> ExternalTaskCreateResponseSchema:
         session_timeout = ClientTimeout(total=None, sock_connect=self.REQUEST_TIMEOUT, sock_read=self.REQUEST_TIMEOUT)
         async with ClientSession(timeout=session_timeout) as session:
-            resp = await session.post(
+            resp = await self._do_request(
+                "POST",
                 "/v2/submit",
                 json=schema.model_dump(exclude_none=True),
             )
-            assert resp.status // 100 == 2, await resp.text()
-            data = await resp.json()
-            logger.debug("Generate response: " + str(data))
-            return ExternalTaskCreateResponseSchema.model_validate(data)
+            logger.debug("Generate response: " + str(resp))
+            return ExternalTaskCreateResponseSchema.model_validate(resp)
 
     async def generate_lyrics(self, prompt: str) -> str:
         response = await self._do_request(
-            "GET",
+            "POST",
             "/v1/lyrics",
             json={"prompt": prompt}
         )
         logger.debug("Lyrics response: " + str(response))
-        return response["data"]["lyrics"]
+        return response["data"]["text"]
 
     async def query(self, song_id: str) -> ExternalTaskStatusResponseSchema:
         response = await self._do_request(

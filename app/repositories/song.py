@@ -32,7 +32,7 @@ class SongRepository(BaseRepository):
     async def is_any_song_generating(self) -> bool:
         query = select(self.base_table).where(or_(self.base_table.comment == "sending", self.base_table.status == SongStatus.queued)).limit(1)
         models = list(await self.session.scalars(query))
-        return len(models) >= 1
+        return len(models) >= 3
 
     async def list_in_progress(self) -> list[Song]:
         return list(await self._get_many(count=1000000, status=SongStatus.queued))
